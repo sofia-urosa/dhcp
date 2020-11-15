@@ -114,7 +114,7 @@ if [ -f T1/$subj.nii.gz -a ! -f $T1masked ];then
 fi
 
 # transform the serag mask to native and add on the brain mask
-if [ ! -f masks/${subj}_mask_defaced.nii.gz ];then 
+if [ ! -f masks/${subj}_mask_defaced.nii.gz ]; then 
   run mirtk transform-image \
     $parameters_dir/deface/template-$age-facemask.nii.gz \
     masks/${subj}_serag_mask.nii.gz \
@@ -130,38 +130,83 @@ if [ ! -f masks/${subj}_mask_defaced.nii.gz ];then
 fi
 
 # deface images
-for m in T1 T2;do
-  if [ -f $m/$subj.nii.gz -a ! -f restore/$m/${subj}_restore_defaced.nii.gz ];then
+for m in T1 T2; do
+  if [ -f $m/$subj.nii.gz -a ! -f restore/$m/${subj}_restore_defaced.nii.gz ]; then
     deface_image $m
   fi
 done
 
-
-if [ ! -f dofs/template-$age-$subj-n.dof.gz ];then
-  run mirtk register $T2masked $template_T2/template-$age.nii.gz -dofout dofs/template-$age-$subj-n.dof.gz -parin $registration_config_template -threads $threads -v 0
+if [ ! -f dofs/$subj-template-$age-r.dof.gz ]; then
+  run mirtk convert-dof \
+    dofs/$subj-template-$age-n.dof.gz \
+    dofs/$subj-template-$age-r.dof.gz \
+    -input-format mirtk \
+    -output-format rigid
 fi
 
-if [ ! -f dofs/$subj-template-$age-r.dof.gz ];then
-  run mirtk convert-dof dofs/$subj-template-$age-n.dof.gz dofs/$subj-template-$age-r.dof.gz -input-format mirtk -output-format rigid
-fi
+if [ ! -f dofs/template-$age-$subj-n.dof.gz ]; then
+  run mirtk invert-dof \
+    dofs/$subj-template-$age-n.dof.gz \
+    dofs/template-$age-$subj-i.dof.gz
 
-if [ ! -f dofs/template-$age-$subj-n.dof.gz ];then
-  run mirtk invert-dof dofs/$subj-template-$age-n.dof.gz dofs/template-$age-$subj-i.dof.gz
-  run mirtk register $template_T2/template-$age.nii.gz $T2masked -dofin dofs/template-$age-$subj-i.dof.gz -dofout dofs/template-$age-$subj-n.dof.gz -parin $registration_config_template -threads $threads -v 0
+  run mirtk register \
+    $template_T2/template-$age.nii.gz \
+    $T2masked \
+    -dofin dofs/template-$age-$subj-i.dof.gz \
+    -dofout dofs/template-$age-$subj-n.dof.gz \
+    -parin $registration_config_template \
+    -threads $threads \
+    -v 0
+
   run rm dofs/template-$age-$subj-i.dof.gz 
 fi
 
-if [ $age != 40 ];then 
-  if [ ! -f dofs/$subj-template-40-n.dof.gz ];then
-    run mirtk convert-dof dofs/$subj-template-$age-n.dof.gz dofs/$subj-template-$age-a.dof.gz -output-format affine
-    run mirtk compose-dofs dofs/$subj-template-$age-a.dof.gz $template_dofs/$age-40-a.dof.gz  dofs/$subj-template-40-i.dof.gz -target $T2masked
-    run mirtk register $T2masked $template_T2/template-40.nii.gz -dofin dofs/$subj-template-40-i.dof.gz -dofout dofs/$subj-template-40-n.dof.gz -parin $registration_config_template -threads $threads -v 0
+if [ $age != 40 ]; then 
+  if [ ! -f dofs/$subj-template-40-n.dof.gz ]; then
+    run mirtk convert-dof \
+      dofs/$subj-template-$age-n.dof.gz \
+      dofs/$subj-template-$age-a.dof.gz \
+      -output-format affine
+
+    run mirtk compose-dofs \
+      dofs/$subj-template-$age-a.dof.gz \
+      $template_dofs/$age-40-a.dof.gz  \
+      dofs/$subj-template-40-i.dof.gz \
+      -target $T2masked
+
+    run mirtk register \
+      $T2masked \
+      $template_T2/template-40.nii.gz \
+      -dofin dofs/$subj-template-40-i.dof.gz \
+      -dofout dofs/$subj-template-40-n.dof.gz \
+      -parin $registration_config_template \
+      -threads $threads \
+      -v 0
+
     run rm dofs/$subj-template-$age-a.dof.gz dofs/$subj-template-40-i.dof.gz
   fi
-  if [ ! -f dofs/template-40-$subj-n.dof.gz ];then
-    run mirtk convert-dof dofs/template-$age-$subj-n.dof.gz dofs/template-$age-$subj-a.dof.gz -output-format affine
-    run mirtk compose-dofs $template_dofs/40-$age-a.dof.gz dofs/template-$age-$subj-a.dof.gz dofs/template-40-$subj-i.dof.gz -target $template_T2/template-40.nii.gz
-    run mirtk register $template_T2/template-40.nii.gz $T2masked -dofin dofs/template-40-$subj-i.dof.gz -dofout dofs/template-40-$subj-n.dof.gz -parin $registration_config_template -threads $threads -v 0
+
+  if [ ! -f dofs/template-40-$subj-n.dof.gz ]; then
+    run mirtk convert-dof \
+      dofs/template-$age-$subj-n.dof.gz \
+      dofs/template-$age-$subj-a.dof.gz \
+      -output-format affine
+
+    run mirtk compose-dofs \
+      $template_dofs/40-$age-a.dof.gz \
+      dofs/template-$age-$subj-a.dof.gz \
+      dofs/template-40-$subj-i.dof.gz \
+      -target $template_T2/template-40.nii.gz
+
+    run mirtk register \
+      $template_T2/template-40.nii.gz \
+      $T2masked \
+      -dofin dofs/template-40-$subj-i.dof.gz \
+      -dofout dofs/template-40-$subj-n.dof.gz \
+      -parin $registration_config_template \
+      -threads $threads \
+      -v 0
+
     run rm dofs/template-$age-$subj-a.dof.gz dofs/template-40-$subj-i.dof.gz
   fi
 fi
