@@ -7,3 +7,5 @@ Release*
 atlases*
 parameters/path.sh
 setup.log
+all.sh
+workdir

@@ -169,7 +169,7 @@ done
 runpipeline segmentation $scriptdir/segmentation/pipeline.sh $T2 $subj $roundedAge -d $workdir -t $threads
 
 # generate some additional files
-#runpipeline additional $scriptdir/misc/pipeline.sh $subj $roundedAge -d $workdir -t $threads
+runpipeline additional $scriptdir/misc/pipeline.sh $subj $roundedAge -d $workdir -t $threads
 
 # surface extraction
 #runpipeline surface $scriptdir/surface/pipeline.sh $subj -d $workdir -t $threads

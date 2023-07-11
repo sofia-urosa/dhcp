@@ -14,7 +14,7 @@ fi
 usage()
 {
   base=$(basename "$0")
-  echo "usage: $base <subject_ID> <session_ID> <scan_age> -T2 <subject_T2.nii.gz> [-T1 <subject_T1.nii.gz>] [options]
+  echo "usage: $base <subject_ID> <session_ID> <scan_age> <segmentation> -T2 <subject_T2.nii.gz> [-T1 <subject_T1.nii.gz>] [options]
 This script runs the dHCP structural pipeline.
 
 Arguments:
@@ -61,7 +61,8 @@ command=$@
 subjectID=$1
 sessionID=$2
 age=$3
-shift; shift; shift;
+sgmt=$4
+shift; shift; shift; shift;
 
 # alias for the specific session
 subj=$subjectID-$sessionID
@@ -89,24 +90,6 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-# consider the case where the user is running us inside docker with an
-# argument like:
-#
-#	-T2 data/T1w.nii.gz
-#
-# the user's data directory will be mapped to /data, and that's out WORKDIR,
-# so we need to remove the leading data/ component for the path to be valid
-#
-# we don't want to make this change unless we have to, so only drop the first
-# pathname component if the file named by T2 does not exist and	T2 is a 
-# relative path
-
-if [[ "$T2" != /* && ! -f "$T2" ]]; then
-  T1=${T1#*/}
-  T2=${T2#*/}
-fi
-
-
 ################ Checks ################
 
 [ "$T2" != "-" -a "$T2" != "" ] || { echo "T2 image not provided!" >&2; exit 1; }
@@ -123,15 +106,19 @@ roundedAge=`printf "%.*f\n" 0 $age` #round
 
 ################ Run ################
 version=`cat $codedir/version`
-echo "dHCP pipeline $version
+echo "dHCP pipeline $version - EDITED
 Subject:     $subjectID
 Session:     $sessionID 
 Age:         $age
 T1:          $T1
 T2:          $T2
-Directory:   $datadir 
+Directory:   $datadir
+Segmentation: $sgmt 
 Threads:     $threads
-Minimal:     $minimal"
+Minimal:     $minimal
+
+This version of the dHCP pipeline segments and extracts the surface from our labels.
+----------------------------"
 [ $threads -eq 1 ] || { echo "Warning: Number of threads>1: This may result in minor reproducibility differences"; }
 echo "
 
@@ -166,13 +153,22 @@ done
 
 
 # segmentation
-runpipeline segmentation $scriptdir/segmentation/pipeline.sh $T2 $subj $roundedAge -d $workdir -t $threads
+#runpipeline segmentation $scriptdir/segmentation/pipeline.sh $T2 $subj $roundedAge -d $workdir -t $threads
 
 # generate some additional files
 #runpipeline additional $scriptdir/misc/pipeline.sh $subj $roundedAge -d $workdir -t $threads
 
+# rename segmentations:
+#mv $workdir/segmentations/$subj"_all_labels.nii.gz" $workdir/segmentations/all_labels.nii.gz
+mv $workdir/segmentations/$subj"_all_labels.nii.gz"  $workdir/segmentations/$subj"_all_labels-auto.nii.gz"
+
+# merge segmentations:
+python3 /home/milo/Documents/dhcp/tests/code/label.py $workdir/segmentations/all_labels.nii.gz  $sgmt $workdir/segmentations/
+gzip $workdir/segmentations/merged.nii
+mv $workdir/segmentations/merged.nii.gz $workdir/segmentations/$subj"_all_labels.nii.gz"
+
 # surface extraction
-#runpipeline surface $scriptdir/surface/pipeline.sh $subj -d $workdir -t $threads
+runpipeline surface $scriptdir/surface/pipeline.sh $subj -d $workdir -t $threads
 
 # create data directory for subject
 #runpipeline structure-data $scriptdir/misc/structure-data.sh $subjectID $sessionID $subj $roundedAge $datadir $workdir $minimal

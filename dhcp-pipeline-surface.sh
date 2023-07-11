@@ -166,13 +166,13 @@ done
 
 
 # segmentation
-runpipeline segmentation $scriptdir/segmentation/pipeline.sh $T2 $subj $roundedAge -d $workdir -t $threads
+#runpipeline segmentation $scriptdir/segmentation/pipeline.sh $T2 $subj $roundedAge -d $workdir -t $threads
 
 # generate some additional files
 #runpipeline additional $scriptdir/misc/pipeline.sh $subj $roundedAge -d $workdir -t $threads
 
 # surface extraction
-#runpipeline surface $scriptdir/surface/pipeline.sh $subj -d $workdir -t $threads
+runpipeline surface $scriptdir/surface/pipeline.sh $subj -d $workdir -t $threads
 
 # create data directory for subject
 #runpipeline structure-data $scriptdir/misc/structure-data.sh $subjectID $sessionID $subj $roundedAge $datadir $workdir $minimal
